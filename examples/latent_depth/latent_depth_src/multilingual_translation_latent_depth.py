@@ -6,10 +6,7 @@
 from fairseq.tasks import register_task
 from fairseq.tasks.multilingual_translation import MultilingualTranslationTask
 from fairseq.utils import safe_hasattr
-
 from .loss.latent_depth import LatentLayersKLLoss, LatentLayersSparsityLoss
-
-
 @register_task("multilingual_translation_latent_depth")
 class MultilingualTranslationTaskLatentDepth(MultilingualTranslationTask):
     """A task for multiple translation with latent depth.

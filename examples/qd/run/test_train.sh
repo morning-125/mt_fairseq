@@ -2,7 +2,7 @@
 train_flag=true
 keep_dir=true
 
-gpu_device=7 #0,1,2,3,4,5,6
+gpu_device=0，1，2，3 #0,1,2,3,4,5,6
 
 data_dir=/data1/qd/gao/data-bin/ted_8_related
 save_dir=/data1/qd/checkpoint
@@ -20,7 +20,7 @@ if [ $train_flag == true ]; then
       --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
 	  --task multilingual_translation \
 	  --arch multilingual_transformer_iwslt_de_en \
-      --lang-pairs "eng-aze,eng-tur,eng-bel,eng-rus,eng-glg,eng-por,eng-slk,eng-ces" \
+      --lang-pairs "eng-tur" \
       --share-encoders \
       --share-decoders \
       --decoder-langtok \
@@ -52,6 +52,4 @@ else
         --beam 5  \
         --decoder-langtok \
         --max-tokens 4096 --quiet \
-
-
 fi
