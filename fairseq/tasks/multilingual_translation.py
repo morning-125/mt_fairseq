@@ -241,7 +241,6 @@ class MultilingualTranslationTask(LegacyFairseqTask):
                 tgt_eos=self.dicts[tgt].eos(),
                 tgt_lang=tgt,
             )
-
         self.datasets[split] = RoundRobinZipDatasets(
             OrderedDict(
                 [

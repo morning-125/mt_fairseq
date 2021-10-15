@@ -2,10 +2,10 @@
 train_flag=true
 keep_dir=true
 
-gpu_device=7 #0,1,2,3,4,5,6
+gpu_device=0
 
 data_dir=/data1/qd/gao/data-bin/ted_8_related
-save_dir=/data1/qd/checkpoint
+save_dir=/data1/cc/save_model/nmt/base_model
 
 if [ $train_flag == true ]; then
     echo "train nmt model from lang $src to $tgt "

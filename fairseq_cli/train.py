@@ -55,7 +55,7 @@ def main(cfg: FairseqConfig) -> None:
     if distributed_utils.is_master(cfg.distributed_training) and "job_logging_cfg" in cfg:
         # make hydra logging work with ddp (see # see https://github.com/facebookresearch/hydra/issues/1126)
         logging.config.dictConfig(OmegaConf.to_container(cfg.job_logging_cfg))
-
+    import torch
     assert (
         cfg.dataset.max_tokens is not None or cfg.dataset.batch_size is not None
     ), "Must specify batch size either with --max-tokens or --batch-size"
@@ -168,6 +168,7 @@ def main(cfg: FairseqConfig) -> None:
     train_meter = meters.StopwatchMeter()
     train_meter.start()
     while epoch_itr.next_epoch_idx <= max_epoch:
+        print(epoch_itr.next_epoch_idx)
         if lr <= cfg.optimization.stop_min_lr:
             logger.info(
                 f"stopping training because current learning rate ({lr}) is smaller "
@@ -180,7 +181,7 @@ def main(cfg: FairseqConfig) -> None:
         valid_losses, should_stop = train(cfg, trainer, task, epoch_itr)
         if should_stop:
             break
-
+        
         # only use first validation loss to update the learning rate
         lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
 
@@ -191,6 +192,7 @@ def main(cfg: FairseqConfig) -> None:
             # don't cache epoch iterators for sharded datasets
             disable_iterator_cache=task.has_sharded_data("train"),
         )
+        #设置成只跑一个batch
     train_meter.stop()
     logger.info("done training in {:.1f} seconds".format(train_meter.sum))
 
@@ -248,6 +250,8 @@ def train(
         else cfg.optimization.update_freq[-1]
     )
     itr = iterators.GroupedIterator(itr, update_freq)
+    # import pdb
+    # pdb.set_trace()
     if cfg.common.tpu:
         itr = utils.tpu_data_loader(itr)
     progress = progress_bar.progress_bar(
