@@ -136,6 +136,7 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         loss = (p_loss + q_loss) / 2
         return loss
     
+
     def forward_reg(self, model, sample, lang_tgt, optimizer, reg_alpha, ignore_grad, reduce=True):
         sample_input = sample['net_input']
         sample_concat_input = {
