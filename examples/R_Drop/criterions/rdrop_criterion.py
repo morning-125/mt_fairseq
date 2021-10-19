@@ -40,6 +40,9 @@ def vanilla_nll_loss(lprobs, target, epsilon, ignore_index=None, reduce=True):
         nll_loss = nll_loss.sum()
     return nll_loss
 
+lang_tgts=["aze","bel","glg","slk","tur","rus","por","ces"]
+
+
 @register_criterion('rdrop_label_smoothed_cross_entropy')
 class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
 
@@ -70,11 +73,16 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
     def reduce_metrics(logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
         loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
+        loss_zero_sum = sum(log.get('loss_zero', 0) for log in logging_outputs)
         nll_loss_sum = sum(log.get('nll_loss', 0) for log in logging_outputs)
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
+        for i in lang_tgts:
+            kl_loss = sum(log.get('kl_loss_'+i, 0) for log in logging_outputs)
+            metrics.log_scalar('kl_loss_'+i, kl_loss / sample_size / math.log(2), sample_size, round=3)
 
         metrics.log_scalar('loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
+        metrics.log_scalar('loss_zero', loss_zero_sum / sample_size / math.log(2), sample_size, round=3)
         metrics.log_scalar('nll_loss', nll_loss_sum / ntokens / math.log(2), ntokens, round=3)
         metrics.log_derived('ppl', lambda meters: utils.get_perplexity(meters['nll_loss'].avg))
 
@@ -99,6 +107,7 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         sample_size = sample['target'].size(0) if self.sentence_avg else sample['ntokens']
         logging_output = {
             'loss': loss.data,
+            'loss_zero': loss.data,
             'nll_loss': nll_loss.data,
             'ntokens': sample['ntokens'],
             'nsentences': sample['target'].size(0),
@@ -127,7 +136,7 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         loss = (p_loss + q_loss) / 2
         return loss
     
-    def forward_reg(self, model, sample, optimizer, reg_alpha, ignore_grad, reduce=True):
+    def forward_reg(self, model, sample, lang_tgt, optimizer, reg_alpha, ignore_grad, reduce=True):
         sample_input = sample['net_input']
         sample_concat_input = {
             'src_tokens': torch.cat([sample_input['src_tokens'], sample_input['src_tokens'].clone()], 0),
@@ -142,12 +151,14 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         target = model.get_targets(sample, net_output)
         pad_mask = target.unsqueeze(-1).eq(self.padding_idx)
         target = torch.cat([target, target.clone()], dim=0)
-        loss, nll_loss = label_smoothed_nll_loss(
+        loss_zero, nll_loss = label_smoothed_nll_loss(
             lprobs, target.view(-1, 1), self.eps, ignore_index=self.padding_idx, reduce=reduce,
         )
         
         kl_loss = self.compute_kl_loss(model, net_output, pad_mask)
-        loss += reg_alpha * kl_loss
+
+        loss = loss_zero + reg_alpha * kl_loss
+
         if ignore_grad:
             loss *= 0
         with torch.autograd.profiler.record_function("backward"):
@@ -158,7 +169,9 @@ class RegLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         sample_size = sample['ntokens']
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
+            'loss_zero': utils.item(loss_zero.data) if reduce else loss_zero.data,
             'nll_loss': utils.item(nll_loss.data) if reduce else nll_loss.data,
+            'kl_loss_'+lang_tgt: utils.item(kl_loss.data) if reduce else kl_loss.data,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'sample_size': sample_size,
