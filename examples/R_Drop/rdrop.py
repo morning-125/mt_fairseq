@@ -20,8 +20,8 @@ class MultilingualTranslationTaskLatentDepth(MultilingualTranslationTask):
     def __init__(self, args, dicts, training):
         super().__init__(args, dicts, training)
         self.criterion_reg_alpha = getattr(args, 'reg_alpha', 0)
-        self.drop_map = {"eng-aze":0.1,"eng-bel":0.1,"eng-glg":0.2,"eng-slk":0.3,"eng-tur":0.4,"eng-rus":0.4,"eng-por":0.4,"eng-ces":0.4}
-        self.alpha_map = {"eng-aze":0,"eng-bel":0,"eng-glg":1,"eng-slk":2,"eng-tur":3,"eng-rus":3,"eng-por":3,"eng-ces":3}
+        self.alpha_map = {"eng-aze":0,"eng-bel":0,"eng-glg":0,"eng-slk":0,"eng-tur":0,"eng-rus":0,"eng-por":0,"eng-ces":0}
+        # self.alpha_map = {"eng-aze":0,"eng-bel":0,"eng-glg":1,"eng-slk":2,"eng-tur":3,"eng-rus":3,"eng-por":3,"eng-ces":3}
     
     def set_dropout(self,model,dropout_rate):
         for layer in model.encoder.layers:
@@ -34,11 +34,9 @@ class MultilingualTranslationTaskLatentDepth(MultilingualTranslationTask):
     def _per_lang_pair_train_loss(
         self, lang_pair, model, update_num, criterion, sample, optimizer, ignore_grad
     ):
-        self.set_dropout(model,self.drop_map[lang_pair])
+        #self.set_dropout(model,self.drop_map[lang_pair])
         model.train()
         model.set_num_updates(update_num)
-        import pdb
-        pdb.set_trace()
         with torch.autograd.profiler.record_function("forward"):
             loss, sample_size, logging_output = criterion.forward_reg( model.models[lang_pair], 
             sample[lang_pair], lang_pair[-3:], optimizer, self.alpha_map[lang_pair], ignore_grad)
